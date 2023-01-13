@@ -10,10 +10,10 @@ $arActivityDescription = array(
     "CATEGORY" => array(
         "ID" => "other",
     ),
-    "RETURN" => [
+    "RETURN" => array(
         "RuleId" => array(
             "NAME" => GetMessage("JC_SEAR_RETURN_RULE_ID_TITLE"),
             "TYPE" => "int",
         )
-    ],
+    ),
 );
