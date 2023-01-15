@@ -22,16 +22,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
         );
 
         $this->SetPropertiesTypes(array(
-            "Employees" => array(
-                "Type" => FieldType::USER,
-                "Multiple" => "Y"
-            ),
-            "AutoReplyContent" => array(
-                "Type" => FieldType::STRING
-            ),
-            "SetReadStatus" => array(
-                "Type" => FieldType::BOOL
-            ),
             "Rules" => array(
                 "Type" => FieldType::INT,
                 "Multiple" => "Y"
@@ -45,6 +35,10 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      */
     public function Execute()
     {
+        if (!CModule::IncludeModule('mail')) {
+            return CBPActivityExecutionStatus::Closed;
+        }
+
         $rootActivity = $this->GetRootActivity();
         $documentId = $rootActivity->GetDocumentId();
 
@@ -98,34 +92,26 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      * @param string $formName
      * @return string
      */
-    public static function GetPropertiesDialog($documentType, $activityName, $arWorkflowTemplate, $arWorkflowParameters, $arWorkflowVariables, $arCurrentValues = null, $formName = "")
+    public static function GetPropertiesDialog($documentType, $activityName, $arWorkflowTemplate, $arWorkflowParameters, $arWorkflowVariables, $arCurrentValues = null, $formName = '', $popupWindow = null, $siteId = '')
     {
-        $runtime = CBPRuntime::GetRuntime();
-
-        if (!is_array($arCurrentValues)) {
-            $arCurrentValues = array(
-                "Employees" => "",
-                "AutoReplyContent" => "",
-                "SetReadStatus" => "N",
-            );
-
-            $arCurrentActivity = &CBPWorkflowTemplateLoader::FindActivityByName($arWorkflowTemplate, $activityName);
-
-            if (is_array($arCurrentActivity["Properties"])) {
-                $arCurrentValues["Employees"] = CBPHelper::UsersArrayToString($arCurrentActivity["Properties"]["Employees"], $arWorkflowTemplate, $documentType);
-                $arCurrentValues["AutoReplyContent"] = $arCurrentActivity["Properties"]["AutoReplyContent"];
-                $arCurrentValues["SetReadStatus"] = $arCurrentActivity["Properties"]["SetReadStatus"];
-            }
+        if (!CModule::IncludeModule('mail')) {
+            return '';
         }
 
-        return $runtime->ExecuteResourceFile(
-            __FILE__,
-            "properties_dialog.php",
-            array(
-                "arCurrentValues" => $arCurrentValues,
-                "formName" => $formName,
-            )
-        );
+        $dialog = new \Bitrix\Bizproc\Activity\PropertiesDialog(__FILE__, [
+            'documentType' => $documentType,
+            'activityName' => $activityName,
+            'workflowTemplate' => $arWorkflowTemplate,
+            'workflowParameters' => $arWorkflowParameters,
+            'workflowVariables' => $arWorkflowVariables,
+            'currentValues' => $arCurrentValues,
+            'formName' => $formName,
+            'siteId' => $siteId
+        ]);
+
+        $dialog->setMap(static::getPropertiesDialogMap());
+
+        return $dialog;
     }
 
     /**
@@ -142,19 +128,36 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      */
     public static function GetPropertiesDialogValues($documentType, $activityName, &$arWorkflowTemplate, &$arWorkflowParameters, &$arWorkflowVariables, $arCurrentValues, &$arErrors)
     {
-        $arErrors = array();
+        if (!CModule::IncludeModule('mail')) {
+            return '';
+        }
 
-        $arProperties = array(
-            "Employees" => CBPHelper::UsersStringToArray($arCurrentValues["Employees"], $documentType, $arErrors),
-            "AutoReplyContent" => $arCurrentValues["AutoReplyContent"],
-            "SetReadStatus" => $arCurrentValues["SetReadStatus"],
-        );
+        $documentService = CBPRuntime::GetRuntime(true)->getDocumentService();
+        $dialog = new \Bitrix\Bizproc\Activity\PropertiesDialog(__FILE__, [
+            'documentType' => $documentType,
+            'activityName' => $activityName,
+            'workflowTemplate' => $arWorkflowTemplate,
+            'workflowParameters' => $arWorkflowParameters,
+            'workflowVariables' => $arWorkflowVariables,
+            'currentValues' => $arCurrentValues,
+        ]);
 
-        if (count($arErrors) > 0) {
-            return false;
+        $arProperties = [];
+        foreach (static::getPropertiesDialogMap() as $fieldID => $arFieldProperties) {
+            $field = $documentService->getFieldTypeObject($dialog->getDocumentType(), $arFieldProperties);
+            if (!$field) {
+                continue;
+            }
+
+            $arProperties[$fieldID] = $field->extractValue(
+                ['Field' => $arFieldProperties['FieldName']],
+                $arCurrentValues,
+                $arErrors
+            );
         }
 
         $arErrors = self::ValidateProperties($arProperties, new CBPWorkflowTemplateUser(CBPWorkflowTemplateUser::CurrentUser));
+
         if (count($arErrors) > 0) {
             return false;
         }
@@ -166,7 +169,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
     }
 
     /**
-     * Validate properties
+     * Validate user provided properties
      * 
      * @param array $arTestProperties
      * @param CBPWorkflowTemplateUser $user
@@ -176,30 +179,27 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
     public static function ValidateProperties($arTestProperties = array(), CBPWorkflowTemplateUser $user = null)
     {
         $arErrors = array();
-
-        if (empty($arTestProperties["Employees"])) {
-            $arErrors[] = array(
-                "code" => "emptyText",
-                "parameter" => "Employees",
-                "message" => GetMessage("JC_SEAR_EMPLOYEES_EMPTY"),
-            );
-        }
-        if (empty($arTestProperties["AutoReplyContent"])) {
-            $arErrors[] = array(
-                "code" => "emptyText",
-                "parameter" => "AutoReplyContent",
-                "message" => GetMessage("JC_SEAR_AUTO_REPLY_CONTENT_EMPTY"),
-            );
+        foreach (static::getPropertiesDialogMap() as $fieldID => $arFieldProperties) {
+            if (isset($arFieldProperties["Required"]) && $arFieldProperties["Required"] && empty($arTestProperties[$fieldID])) { {
+                    $arErrors[] = array(
+                        "code" => "emptyText",
+                        "parameter" => $fieldID,
+                        "message" => str_replace("#FIELD_NAME#", $arFieldProperties["Name"], GetMessage("JC_SEAR_FIELD_NOT_SPECIFIED")),
+                    );
+                }
+            }
         }
 
         return array_merge($arErrors, parent::ValidateProperties($arTestProperties, $user));
     }
 
     /**
+     * Get autoreply rule processor
+     * 
      * @return string
      */
 
-    public static function GetAutoReplyProcessor()
+    private static function GetAutoReplyProcessor()
     {
         return "
             \$from = CMailUtil::ExtractMailAddress(\$arMessageFields[\"FIELD_FROM\"]);
@@ -213,5 +213,37 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
                 Mail::send(\$arMailParams);
             }
         ";
+    }
+
+    /**
+     * User provided properties
+     * 
+     * @return array
+     */
+
+    private static function getPropertiesDialogMap()
+    {
+        return array(
+            'Employees' => array(
+                'Name' => GetMessage('JC_SEAR_EMPLOYEES_FIELD_TITLE'),
+                'FieldName' => 'Employees',
+                'Type' => FieldType::USER,
+                'Multiple' => 'Y',
+                'Required' => true
+            ),
+            'AutoReplyContent' => array(
+                'Name' => GetMessage('JC_SEAR_AUTO_REPLY_CONTENT_FIELD_TITLE'),
+                'FieldName' => 'AutoReplyContent',
+                'Type' => FieldType::TEXT,
+                'Required' => true
+            ),
+            'SetReadStatus' => array(
+                'Name' => GetMessage('JC_SEAR_SET_READ_STATUS_FIELD_TITLE'),
+                'FieldName' => 'SetReadStatus',
+                'Type' => FieldType::BOOL,
+                'Required' => true,
+                'Default' => 'N'
+            ),
+        );
     }
 }
