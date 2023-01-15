@@ -62,7 +62,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
         $arRules = array();
 
         foreach ($arEmployees as $employeeID) {
-            if ($arMailBox = CMailBox::GetList(array(), array("USER_ID" => $employeeID))) {
+            if ($arMailBox = CMailBox::GetList(array(), array("USER_ID" => $employeeID))->Fetch()) {
                 $arRules[] = CMailFilter::Add(
                     array_merge(
                         $arRuleFields,
@@ -255,33 +255,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
                 "Type" => FieldType::BOOL,
                 "Required" => true,
                 "Default" => "N",
-            ),
+            )
         );
     }
 }
-
-$to = 'kobagogoberidze@outlook.com';
-$from = 'koba.gogoberidze@eltbg.com';
-$autoReplyContent = "Tadaaaa";
-
-            if ($from != $to) {
-                $context = Bitrix\Main\Mail\Context();
-                $context->setCategory(Bitrix\Main\Mail\Context::CAT_EXTERNAL)
-                    ->setPriority(Bitrix\Main\Mail\Context::PRIORITY_LOW);
-
-                $arMailParams = array(
-                    "CHARSET" => SITE_CHARSET,
-                    "CONTENT_TYPE" => "html",
-                    "TO" => $to,
-                    "BODY" => $autoReplyContent,
-                    "HEADER" => array(
-                        "From" => $from,
-                        "Reply-To" => $to,
-						//"Message-Id" => $messageId,
-                    ),
-                    "CONTEXT" => $context,
-                );
-
-                Bitrix\Main\Mail\Mail::send($arMailParams)
-            }
-
