@@ -1,0 +1,4 @@
+<?
+$MESS['JC_SEAR_EMPLOYEES_FIELD_TITLE'] = "Employees";
+$MESS['JC_SEAR_AUTO_REPLY_CONTENT_FIELD_TITLE'] = "Auto reply contnet";
+$MESS['JC_SEAR_SET_READ_STATUS_FIELD_TITLE'] = "Set read status";
