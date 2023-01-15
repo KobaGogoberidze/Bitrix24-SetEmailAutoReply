@@ -17,7 +17,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             "Title" => "",
             "Employees" => "",
             "AutoReplyContent" => "",
-            "SetReadStatus" => false,
+            "SetReadStatus" => "N",
             "Rules" => ""
         );
 
@@ -51,13 +51,13 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
         $arEmployees = CBPHelper::ExtractUsers($this->Employees, $documentId, true);
 
         if (empty($arEmployees)) {
-            $this->WriteToTrackingService(str_replace("#EMPLOYEE", $employeeID, GetMessage("JC_WL2F_FILE_PATH_EMPTY")), 0, CBPTrackingType::Error);
+            $this->WriteToTrackingService(GetMessage("JC_SEAR_EMPLOYEES_NOT_FOUND"), 0, CBPTrackingType::Error);
 
             return CBPActivityExecutionStatus::Closed;
         }
 
         $arRuleFields = array(
-            "NAME" => GetMessage("JC_WL2F_FILE_PATH_EMPTY"),
+            "NAME" => GetMessage("JC_SEAR_RULE_NAME"),
             "ACTIVE" => "Y",
             "SORT" => 10,
             "WHEN_MAIL_RECEIVED" => "Y",
@@ -66,20 +66,20 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             "ACTION_PHP" => str_replace("#AUTO_REPLY_CONTENT#", $this->AutoReplyContent, $this->GetAutoReplyProcessor())
         );
 
-        $arRules = array();
+        $arRules = array(1, 2, 3, 4);
 
-        foreach ($arEmployees as $employeeID) {
-            if ($arMailBox = CMailBox::GetList(array(), array("USER_ID" => $employeeID))) {
-                $arRules[] = CMailFilter::Add(
-                    array_merge(
-                        $arRuleFields,
-                        array("MAILBOX_ID" => $arMailBox["ID"])
-                    )
-                );
-            } else {
-                $this->WriteToTrackingService(str_replace("#EMPLOYEE", $employeeID, GetMessage("JC_WL2F_FILE_PATH_EMPTY")), 0, CBPTrackingType::Error);
-            }
-        }
+        // foreach ($arEmployees as $employeeID) {
+        //     if ($arMailBox = CMailBox::GetList(array(), array("USER_ID" => $employeeID))) {
+        //         $arRules[] = CMailFilter::Add(
+        //             array_merge(
+        //                 $arRuleFields,
+        //                 array("MAILBOX_ID" => $arMailBox["ID"])
+        //             )
+        //         );
+        //     } else {
+        //         $this->WriteToTrackingService(str_replace("#EMPLOYEE", $employeeID, GetMessage("JC_SEAR_MAILBOX_NOT_FOUND")), 0, CBPTrackingType::Error);
+        //     }
+        // }
 
         $this->arRules = $arRules;
 
@@ -106,7 +106,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             $arCurrentValues = array(
                 "Employees" => "",
                 "AutoReplyContent" => "",
-                "SetReadStatus" => false,
+                "SetReadStatus" => "N",
             );
 
             $arCurrentActivity = &CBPWorkflowTemplateLoader::FindActivityByName($arWorkflowTemplate, $activityName);
@@ -145,10 +145,14 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
         $arErrors = array();
 
         $arProperties = array(
-            "Employees" => CBPHelper::UsersArrayToString($arCurrentValues["Employees"], $arWorkflowTemplate, $documentType),
+            "Employees" => CBPHelper::UsersStringToArray($arCurrentValues["Employees"], $documentType, $arErrors),
             "AutoReplyContent" => $arCurrentValues["AutoReplyContent"],
             "SetReadStatus" => $arCurrentValues["SetReadStatus"],
         );
+
+        if (count($arErrors) > 0) {
+            return false;
+        }
 
         $arErrors = self::ValidateProperties($arProperties, new CBPWorkflowTemplateUser(CBPWorkflowTemplateUser::CurrentUser));
         if (count($arErrors) > 0) {
@@ -177,21 +181,14 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             $arErrors[] = array(
                 "code" => "emptyText",
                 "parameter" => "Employees",
-                "message" => GetMessage("JC_WL2F_CONTENT_EMPTY"),
+                "message" => GetMessage("JC_SEAR_EMPLOYEES_EMPTY"),
             );
         }
         if (empty($arTestProperties["AutoReplyContent"])) {
             $arErrors[] = array(
                 "code" => "emptyText",
                 "parameter" => "AutoReplyContent",
-                "message" => GetMessage("JC_WL2F_FILE_PATH_EMPTY"),
-            );
-        }
-        if (empty($arTestProperties["SetReadStatus"])) {
-            $arErrors[] = array(
-                "code" => "emptyText",
-                "parameter" => "SetReadStatus",
-                "message" => GetMessage("JC_WL2F_FILE_PATH_EMPTY"),
+                "message" => GetMessage("JC_SEAR_AUTO_REPLY_CONTENT_EMPTY"),
             );
         }
 
