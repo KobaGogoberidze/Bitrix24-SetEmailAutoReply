@@ -213,11 +213,12 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
                     \"CHARSET\" => SITE_CHARSET,
                     \"CONTENT_TYPE\" => \"html\",
                     \"TO\" => \$to,
+                    \"SUBJECT\" => \"RE: {\$arMessageFields[\"SUBJECT\"]}\",
                     \"BODY\" => \$autoReplyContent,
                     \"HEADER\" => array(
                         \"From\" => \$from,
-                        \"Reply-To\" => \$to,
-                        \"Message-Id\" => \$messageId,
+                        \"Reply-To\" => \$from,
+                        \"References\" => \$arMessageFields[\"MSG_ID\"]
                     ),
                     \"CONTEXT\" => \$context,
                 );
