@@ -12,7 +12,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      */
     public function __construct($name)
     {
-
+        parent::__construct($name);
         $this->arProperties = array(
             "Title" => "",
             "Employees" => "",
@@ -20,13 +20,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             "SetReadStatus" => false,
             "Rules" => []
         );
-
-        $this->SetPropertiesTypes(array(
-            "Rules" => array(
-                "Type" => FieldType::INT,
-                "Multiple" => "Y"
-            )
-        ));
     }
     /**
      * Start the execution of activity
@@ -59,11 +52,10 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             "ACTION_READ" => "Y",
             "ACTION_PHP" => str_replace("#AUTO_REPLY_CONTENT#", $this->AutoReplyContent, $this->GetAutoReplyProcessor())
         );
-        $arRules = array();
 
         foreach ($arEmployees as $employeeID) {
             if ($arMailBox = CMailBox::GetList(array(), array("USER_ID" => $employeeID))->Fetch()) {
-                $arRules[] = CMailFilter::Add(
+                CMailFilter::Add(
                     array_merge(
                         $arRuleFields,
                         array("MAILBOX_ID" => $arMailBox["ID"])
@@ -174,7 +166,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      * @param CBPWorkflowTemplateUser $user
      * @return array
      */
-
     public static function ValidateProperties($arTestProperties = array(), CBPWorkflowTemplateUser $user = null)
     {
         $arErrors = array();
@@ -196,7 +187,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      * 
      * @return string
      */
-
     private static function GetAutoReplyProcessor()
     {
         return "
@@ -233,7 +223,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
      * 
      * @return array
      */
-
     private static function getPropertiesDialogMap()
     {
         return array(
