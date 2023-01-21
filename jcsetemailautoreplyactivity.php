@@ -50,7 +50,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             "WHEN_MAIL_RECEIVED" => "Y",
             "WHEN_MANUALLY_RUN" => "N",
             "ACTION_READ" => "Y",
-            "ACTION_PHP" => str_replace("#AUTO_REPLY_CONTENT#", $this->AutoReplyContent, $this->GetAutoReplyProcessor())
+            "ACTION_PHP" => str_replace("#AUTO_REPLY_CONTENT#", $this->AutoReplyContent, self::GetAutoReplyProcessor())
         );
 
         foreach ($arEmployees as $employeeID) {
@@ -65,8 +65,6 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
                 $this->WriteToTrackingService(str_replace("#EMPLOYEE", $employeeID, GetMessage("JC_SEAR_MAILBOX_NOT_FOUND")), 0, CBPTrackingType::Error);
             }
         }
-
-        $this->arRules = $arRules;
 
         return CBPActivityExecutionStatus::Closed;
     }
@@ -147,7 +145,7 @@ class CBPJCSetEmailAutoReplyActivity extends CBPActivity
             );
         }
 
-        $arErrors = self::ValidateProperties($arProperties, new CBPWorkflowTemplateUser(CBPWorkflowTemplateUser::CurrentUser));
+        $arErrors = static::ValidateProperties($arProperties, new CBPWorkflowTemplateUser(CBPWorkflowTemplateUser::CurrentUser));
 
         if (count($arErrors) > 0) {
             return false;
